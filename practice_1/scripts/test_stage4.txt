@@ -1,0 +1,22 @@
+# scripts/test_stage4.txt
+# Тест команд этапа 4
+whoami
+uptime
+vfsinfo
+ls
+ls /
+ls /nonexistent
+cd /            
+ls
+cd level1       
+ls
+cd level2
+ls
+cat l2file.txt
+cat /rootfile.txt
+cd ..           
+cd ../..
+cd /does/not/exist
+ls /level1/unknown
+unknowncmd arg1
+uptime

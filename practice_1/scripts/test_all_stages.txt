@@ -13,6 +13,6 @@ cat deep.txt
 cat /rootfile.txt
 cat /does/not/exist
 unknowncmd arg1
-cd /  # возврат в корень
+cd /  
 vfsinfo
 
