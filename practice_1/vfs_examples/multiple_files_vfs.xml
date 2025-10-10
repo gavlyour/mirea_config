@@ -1,0 +1,9 @@
+<vfs>
+  <dir name="/">
+    <file name="readme.txt" encoding="utf-8">Это readme в корне.</file>
+    <file name="data.bin" encoding="base64">AAECAwQFBgc=</file> <!-- несколько случайных байт -->
+    <dir name="docs">
+      <file name="manual.txt" encoding="utf-8">Руководство пользователя.</file>
+    </dir>
+  </dir>
+</vfs>

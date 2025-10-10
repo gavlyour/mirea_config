@@ -1,0 +1,13 @@
+<vfs>
+  <dir name="/">
+    <dir name="level1">
+      <dir name="level2">
+        <dir name="level3">
+          <file name="deep.txt" encoding="utf-8">Это файл в глубине 3-го уровня.</file>
+        </dir>
+        <file name="l2file.txt" encoding="utf-8">Файл на уровне 2</file>
+      </dir>
+    </dir>
+    <file name="rootfile.txt" encoding="utf-8">Файл в корне</file>
+  </dir>
+</vfs>

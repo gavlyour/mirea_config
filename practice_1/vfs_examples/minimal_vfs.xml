@@ -1,0 +1,5 @@
+<vfs>
+  <dir name="/">
+    <file name="hello.txt" encoding="utf-8">Привет из VFS!</file>
+  </dir>
+</vfs>

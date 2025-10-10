@@ -1,0 +1,18 @@
+# Тестовый скрипт для проверки команд и VFS
+vfsinfo
+ls
+ls /
+ls /nonexistent
+cd /
+ls
+cd level1
+ls
+cd level2
+ls
+cat deep.txt
+cat /rootfile.txt
+cat /does/not/exist
+unknowncmd arg1
+cd /  # возврат в корень
+vfsinfo
+
