@@ -1,0 +1,20 @@
+<vfs>
+  <dir name="/">
+    <!-- Текстовый файл (utf-8) -->
+    <file name="hello.txt" encoding="utf-8">Привет из VFS (текст)!</file>
+
+    <!-- Маленький бинарный файл (список байт 0x00 0x01 0x02 0x03 0x04) -->
+    <file name="small.bin" encoding="base64">
+AAECAwQF
+    </file>
+
+    <!-- 1x1 PNG (обычный пример base64 для маленького PNG) -->
+    <file name="tiny.png" encoding="base64">
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVQImWNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=
+    </file>
+
+    <dir name="docs">
+      <file name="readme.txt" encoding="utf-8">Документация внутри VFS.</file>
+    </dir>
+  </dir>
+</vfs>

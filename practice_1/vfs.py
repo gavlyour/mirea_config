@@ -1,7 +1,8 @@
 # vfs.py
 """
 Модуль VFS: модель виртуальной файловой системы в памяти и загрузчик из XML.
-Вся работа с VFS происходит в памяти — никаких изменений файлов на диске.
+Добавлены вспомогательные методы для работы с деревом (удаление узла, получение родителя).
+Вся работа с VFS — только в памяти.
 """
 
 import os
@@ -28,6 +29,13 @@ class VFSDirectory(VFSNode):
     def get_child(self, name: str) -> Optional[VFSNode]:
         return self.children.get(name)
 
+    def remove_child(self, name: str) -> bool:
+        """Удалить дочерний узел по имени. Возвращает True если удалено, False если нет."""
+        if name in self.children:
+            del self.children[name]
+            return True
+        return False
+
 
 class VFSFile(VFSNode):
     """Файл VFS — хранит содержимое как bytes."""
@@ -40,14 +48,7 @@ def load_vfs_from_xml(path: str) -> VFSDirectory:
     """
     Загружает VFS из XML-файла и возвращает корневой каталог (VFSDirectory).
     Бросает исключения при ошибках (FileNotFoundError, ValueError при некорректном XML).
-    Ожидаемый простой формат:
-      <vfs>
-        <dir name="/">
-          <file name="a.txt" encoding="utf-8">Текст</file>
-          <file name="b.bin" encoding="base64">BASE64...</file>
-          <dir name="sub"> ... </dir>
-        </dir>
-      </vfs>
+    Ожидаемый формат описан ранее.
     """
     if not os.path.isfile(path):
         raise FileNotFoundError(f"VFS файл не найден: {path}")
@@ -116,8 +117,7 @@ def resolve_path(root: VFSDirectory, cwd: List[str], path: str) -> Optional[Unio
     """
     Разрешает путь относительно текущей директории cwd (список компонентов от корня).
     Возвращает VFSNode или None, если путь не найден.
-    Поддерживает абсолютные (начинаются с '/') и относительные пути.
-    Обрабатывает '.' и '..'.
+    Поддерживает абсолютные и относительные пути, '.' и '..'.
     """
     if path.startswith('/'):
         comps = split_path(path)
@@ -143,3 +143,47 @@ def resolve_path(root: VFSDirectory, cwd: List[str], path: str) -> Optional[Unio
         if node is None:
             return None
     return node
+
+
+def resolve_parent(root: VFSDirectory, cwd: List[str], path: str) -> Optional[tuple]:
+    """
+    Разрешает путь и возвращает (parent_dir, name) для указанного path.
+    parent_dir — VFSDirectory (куда должен находиться элемент),
+    name — имя последнего компонента пути.
+    Возвращает None, если родитель не найден или не является директорией.
+    Примеры:
+      path = '/a/b/c.txt' => вернёт (dir('/a/b'), 'c.txt') если такой родитель существует.
+      path = 'd/e' относительно cwd => аналогично.
+    """
+    if path == '/':
+        return None
+    # Разделим путь на компоненты
+    if path.startswith('/'):
+        comps = split_path(path)
+    else:
+        comps = list(cwd) + split_path(path)
+    if not comps:
+        return (root, '')  # special case корень (не используется)
+    parent_comps = comps[:-1]
+    name = comps[-1]
+    # Нормализация parent_comps (обработка .. и .)
+    stack: List[str] = []
+    for c in parent_comps:
+        if c == '..':
+            if stack:
+                stack.pop()
+        elif c == '.':
+            continue
+        else:
+            stack.append(c)
+    # Пройдём от корня по stack
+    node: VFSNode = root
+    for comp in stack:
+        if not isinstance(node, VFSDirectory):
+            return None
+        node = node.get_child(comp)
+        if node is None:
+            return None
+    if not isinstance(node, VFSDirectory):
+        return None
+    return (node, name)

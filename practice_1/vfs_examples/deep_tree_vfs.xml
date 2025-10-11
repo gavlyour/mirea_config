@@ -1,5 +1,7 @@
 <vfs>
   <dir name="/">
+    <dir name="emptydir">
+    </dir>
     <dir name="level1">
       <dir name="level2">
         <dir name="level3">

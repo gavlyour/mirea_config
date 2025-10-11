@@ -1,0 +1,8 @@
+# Проверка файлов с base64
+vfsinfo
+ls /
+cat hello.txt
+cat small.bin
+cat tiny.png
+ls /docs
+cat /docs/readme.txt

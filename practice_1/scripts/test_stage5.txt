@@ -1,0 +1,46 @@
+# scripts/test_stage5.txt
+# Тестирование команд этапа 5: cp и rmdir (и повторы предыдущих команд)
+vfsinfo
+ls /
+ls /level1
+ls /level1/level2
+cat /level1/level2/l2file.txt
+
+# cp: копируем файл в существующую директорию (copy into dir)
+cp /level1/level2/l2file.txt /level1
+
+# проверить, что скопировано
+ls /level1
+cat /level1/l2file.txt
+
+# cp: копируем и переименовываем (создаём новый файл)
+cp /level1/l2file.txt /level1/l2copy.txt
+ls /level1
+cat /level1/l2copy.txt
+
+# cp: перезапись файла (копируем тот же файл на существующее имя)
+cp /rootfile.txt /level1/l2copy.txt
+cat /level1/l2copy.txt
+
+# cp: ошибки — источник не существует
+cp /no/such/file.txt /level1/
+
+# cp: ошибки — попытка копировать директорию
+cp /level1 /level1/copy_of_level1
+
+# rmdir: попытка удалить непустую директорию (ошибка ожидаема)
+rmdir /level1
+# удалим скопированные файлы, чтобы опустошить поддиректорию (если нужно)
+# (в нашем прототипе нет rm, поэтому это демонстрация ошибки)
+# rmdir: попытка удалить несуществующий путь
+rmdir /does/not/exist
+
+# Создадим пустую директорию в VFS — эмуляция: этот шаг предполагает,
+# что в VFS уже есть пустая директория e.g. /emptydir; если нет — он выдаст ошибку.
+rmdir /emptydir
+
+# Проверка безопасности: rmdir на файле
+rmdir /level1/l2copy.txt
+
+# Финальные проверки
+vfsinfo

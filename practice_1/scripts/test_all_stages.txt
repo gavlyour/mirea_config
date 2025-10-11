@@ -9,7 +9,7 @@ cd level1
 ls
 cd level2
 ls
-cat deep.txt
+cat l2file.txt
 cat /rootfile.txt
 cat /does/not/exist
 unknowncmd arg1

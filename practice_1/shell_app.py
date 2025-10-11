@@ -1,7 +1,7 @@
 # shell_app.py
 """
 GUI-приложение: ShellEmulator — REPL с поддержкой VFS.
-Импортирует функции/классы из vfs.py.
+Добавлены команды rmdir и cp (все модификации VFS только в памяти).
 """
 
 import time
@@ -13,7 +13,7 @@ import tkinter as tk
 from tkinter import scrolledtext
 from typing import List, Optional
 
-from vfs import VFSDirectory, VFSFile, VFSNode, load_vfs_from_xml, resolve_path, split_path
+from vfs import VFSDirectory, VFSFile, VFSNode, load_vfs_from_xml, resolve_path, split_path, resolve_parent
 
 
 class ShellEmulator(tk.Tk):
@@ -35,7 +35,7 @@ class ShellEmulator(tk.Tk):
         self.username = getpass.getuser()
         self.hostname = socket.gethostname()
         self.title(f"Эмулятор - [{self.username}@{self.hostname}]")
-        self.geometry("800x500")
+        self.geometry("820x520")
 
         # Строка ввода (фрейм)
         entry_frame = tk.Frame(self)
@@ -52,7 +52,7 @@ class ShellEmulator(tk.Tk):
         self.output = scrolledtext.ScrolledText(self, wrap=tk.WORD, state=tk.DISABLED)
         self.output.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Команды (добавлены uptime и whoami)
+        # Команды (добавлены rmdir и cp)
         self.commands = {
             'ls': self.cmd_ls,
             'cd': self.cmd_cd,
@@ -60,6 +60,8 @@ class ShellEmulator(tk.Tk):
             'vfsinfo': self.cmd_vfsinfo,
             'uptime': self.cmd_uptime,
             'whoami': self.cmd_whoami,
+            'rmdir': self.cmd_rmdir,
+            'cp': self.cmd_cp,
             'exit': self.cmd_exit,
         }
 
@@ -155,17 +157,14 @@ class ShellEmulator(tk.Tk):
             self.cwd = stack
         return True
 
-    # --- команды ---
+    # --- команды базовые (ls, cd, cat, vfsinfo, uptime, whoami) ---
     def cmd_ls(self, args: List[str]):
-        """ls: перечислить содержимое директории или показать файл.
-        Поддерживает относительные и абсолютные пути, '.' и '..'.
-        """
+        """ls: перечислить содержимое директории или показать файл."""
         target = args[0] if args else '.'
         if target == '.':
             if not self.vfs_root:
                 self.write_output("VFS не загружен.")
                 return
-            # текущая директория как путь
             cur_path = '/' + '/'.join(self.cwd) if self.cwd else '/'
             node = resolve_path(self.vfs_root, self.cwd, cur_path)
         else:
@@ -174,7 +173,6 @@ class ShellEmulator(tk.Tk):
             self.write_output(f"ls: путь не найден: {target}")
             return
         if isinstance(node, VFSDirectory):
-            # перечислим имена в отсортированном порядке
             names = []
             for name, child in sorted(node.children.items()):
                 names.append(name + ('/' if isinstance(child, VFSDirectory) else ''))
@@ -200,7 +198,10 @@ class ShellEmulator(tk.Tk):
             self.write_output(f"cd: путь не найден или не является директорией: {path}")
 
     def cmd_cat(self, args: List[str]):
-        """cat: показать содержимое файла (попытка декодирования utf-8, иначе base64)."""
+        """cat: показать содержимое файла.
+        Попытка: декодировать в utf-8 и показать если это читаемый текст.
+        В противном случае показать base64-представление бинарных данных.
+        """
         if not args:
             self.write_output("cat: требуется путь к файлу")
             return
@@ -211,16 +212,40 @@ class ShellEmulator(tk.Tk):
         if isinstance(node, VFSDirectory):
             self.write_output(f"cat: {args[0]}: это директория")
             return
+        # node — VFSFile
         assert isinstance(node, VFSFile)
         data = node.data
+
+        # пустой файл — явно показываем
+        if not data:
+            self.write_output("(empty file)")
+            return
+
+        # попробуем декодировать в utf-8
         try:
             text = data.decode('utf-8')
-            if text == '':
-                self.write_output('')
-            else:
-                for line in text.splitlines():
-                    self.write_output(line)
         except Exception:
+            # не текст — покажем base64
+            b64 = base64.b64encode(data).decode('ascii')
+            self.write_output(f"(binary data, base64): {b64}")
+            return
+
+        # Если декодирование прошло — проверим, является ли текст отображаемым
+        # считаем его текстом, если хотя бы 60% символов печатаемы (порог можно настроить)
+        if text.strip() == '':
+            # строка состоит только из пробелов/управляющих символов — считать нечитабельным
+            b64 = base64.b64encode(data).decode('ascii')
+            self.write_output(f"(binary data, base64): {b64}")
+            return
+
+        printable_count = sum(1 for ch in text if ch.isprintable() or ch in '\n\r\t')
+        ratio = printable_count / max(1, len(text))
+        if ratio >= 0.6:
+            # считаем это текстом — выводим построчно
+            for line in text.splitlines():
+                self.write_output(line)
+        else:
+            # большинство — непечатаемые символы, показываем base64
             b64 = base64.b64encode(data).decode('ascii')
             self.write_output(f"(binary data, base64): {b64}")
 
@@ -260,8 +285,6 @@ class ShellEmulator(tk.Tk):
             human.append(f"{days}d")
         human.append(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
         self.write_output(f"Uptime (эмулятор): {' '.join(human)}")
-
-        # Попытка также показать системный uptime на Unix-подобных системах
         try:
             if os.path.exists('/proc/uptime'):
                 with open('/proc/uptime', 'r') as f:
@@ -273,19 +296,107 @@ class ShellEmulator(tk.Tk):
                     sys_human = (f"{d}d " if d else "") + f"{h:02d}:{m:02d}:{s:02d}"
                     self.write_output(f"Uptime (система): {sys_human}")
         except Exception:
-            # если не удалось — молча пропускаем (не критично)
             pass
 
     def cmd_whoami(self, args: List[str]):
         """whoami: напечатать имя текущего пользователя ОС."""
         self.write_output(self.username)
 
+    # --- НОВЫЕ команды: rmdir и cp ---
+    def cmd_rmdir(self, args: List[str]):
+        """rmdir: удалить пустую директорию в VFS (только в памяти)."""
+        if not args:
+            self.write_output("rmdir: требуется путь к директории")
+            return
+        path = args[0]
+        if not self.vfs_root:
+            self.write_output("VFS не загружен.")
+            return
+        # Найти сам узел
+        node = self.vfs_resolve(path)
+        if node is None:
+            self.write_output(f"rmdir: путь не найден: {path}")
+            return
+        if not isinstance(node, VFSDirectory):
+            self.write_output(f"rmdir: {path}: не является директорией")
+            return
+        # Проверить пустоту
+        if node.children:
+            self.write_output(f"rmdir: {path}: директория не пуста")
+            return
+        # Найти родителя и удалить у него этот узел
+        parent_info = resolve_parent(self.vfs_root, self.cwd, path)
+        if parent_info is None:
+            self.write_output(f"rmdir: не удалось найти родителя для {path}")
+            return
+        parent_dir, name = parent_info
+        if not parent_dir.remove_child(name):
+            self.write_output(f"rmdir: не удалось удалить {path}")
+            return
+        self.write_output(f"rmdir: удалено {path}")
+
+    def cmd_cp(self, args: List[str]):
+        """cp: копировать файл внутри VFS (в памяти).
+        usage: cp <src> <dst>
+        """
+        if len(args) < 2:
+            self.write_output("cp: требуется источник и назначение")
+            return
+        src, dst = args[0], args[1]
+        if not self.vfs_root:
+            self.write_output("VFS не загружен.")
+            return
+        src_node = self.vfs_resolve(src)
+        if src_node is None:
+            self.write_output(f"cp: источник не найден: {src}")
+            return
+        if isinstance(src_node, VFSDirectory):
+            self.write_output(f"cp: копирование директорий не поддерживается: {src}")
+            return
+        # src_node — VFSFile
+        assert isinstance(src_node, VFSFile)
+        # Если dst существует и это директория — копируем внутрь с тем же именем
+        dst_node = self.vfs_resolve(dst)
+        if dst_node is not None and isinstance(dst_node, VFSDirectory):
+            dest_parent = dst_node
+            dest_name = src_node.name
+        elif dst_node is not None and isinstance(dst_node, VFSFile):
+            # dst указывает на файл — перезаписать его
+            parent_info = resolve_parent(self.vfs_root, self.cwd, dst)
+            if parent_info is None:
+                self.write_output(f"cp: не удалось найти родителя для {dst}")
+                return
+            dest_parent, dest_name = parent_info
+        else:
+            # dst не существует: найти родитель, куда создавать файл
+            parent_info = resolve_parent(self.vfs_root, self.cwd, dst)
+            if parent_info is None:
+                self.write_output(f"cp: родительская директория для {dst} не найдена")
+                return
+            dest_parent, dest_name = parent_info
+        # Проверка dest_parent
+        if not isinstance(dest_parent, VFSDirectory):
+            self.write_output(f"cp: целевая директория недоступна: {dst}")
+            return
+        # Создаём новый файл-узел с копией байтов
+        new_data = bytes(src_node.data)  # копия байтов
+        new_file = VFSFile(dest_name, new_data)
+        # Если там уже есть узел с таким именем — если это директория — ошибка, иначе перезапишем
+        existing = dest_parent.get_child(dest_name)
+        if existing and isinstance(existing, VFSDirectory):
+            self.write_output(f"cp: не могу перезаписать директорию: {dst}")
+            return
+        dest_parent.add_child(new_file)
+        # Вывод успеха
+        # отобразим путь в формате, удобном для пользователя
+        self.write_output(f"cp: скопировано {src} -> {dst}")
+
     def cmd_exit(self, args: List[str]):
         """exit: завершить приложение."""
         self.write_output("Выход...")
         self.destroy()
 
-    # --- стартовый скрипт ---
+    # --- стартовый скрипт (повторно) ---
     def execute_line(self, line: str):
         """Выполнить одну строку скрипта (эмуляция ручного ввода)."""
         line = line.rstrip('\n')
@@ -327,6 +438,6 @@ class ShellEmulator(tk.Tk):
             self.write_output("Стартовый скрипт пуст или содержит только комментарии.")
             return
 
-        delay_ms = 500
+        delay_ms = 300
         for i, ln in enumerate(lines):
             self.after(delay_ms * i, lambda l=ln: self.execute_line(l))
