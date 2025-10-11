@@ -38,7 +38,7 @@ class VFSDirectory(VFSNode):
 
 
 class VFSFile(VFSNode):
-    """Файл VFS — хранит содержимое как bytes."""
+    """Файл VFS — хранит содержимое."""
     def __init__(self, name: str, data: bytes):
         super().__init__(name)
         self.data = data
