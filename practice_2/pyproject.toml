@@ -1,0 +1,9 @@
+[project]
+name = "depviz"
+version = "0.0.1"
+description = "Минимальный прототип CLI для визуализации графа зависимостей (Этап 1)"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[project.scripts]
+depviz = "depviz.cli:main"
