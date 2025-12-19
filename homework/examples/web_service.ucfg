@@ -1,0 +1,16 @@
+" Конфигурация веб-сервера
+port := 8.08e+3
+timeout := 3e+1
+
+{
+service = 'gateway'
+listen = $[port]
+limits = {
+  read_timeout_sec = $[timeout]
+  max_body_mb = 2.5e+1
+}
+routes = (
+  { path = '/api' upstream = 'http://api:8080' },
+  { path = '/static' upstream = 'http://cdn:8080' }
+)
+}

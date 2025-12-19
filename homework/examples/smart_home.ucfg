@@ -1,0 +1,16 @@
+" Умный дом: расписания и устройства
+default_temp := 2.1e+1
+
+{
+home = 'apt-12'
+devices = (
+  { id = 'lamp1' type = 'light' power_w = 6e+0 },
+  { id = 'thermo1' type = 'thermostat' target_c = $[default_temp] }
+)
+automation = {
+  evening = {
+    at_hour = 1.8e+1
+    actions = ( 'lamp1:on', 'thermo1:set' )
+  }
+}
+}

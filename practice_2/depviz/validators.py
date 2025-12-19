@@ -4,14 +4,15 @@ from urllib.parse import urlparse
 from .errors import ConfigError
 
 _PKG_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$")
-# Simplified PEP 440 check: 1.2.3, 1.0a1, 2.0rc2, 1.0.post1, 1.0.dev3
-_VER_RE = re.compile(
-    r"^\s*\d+(?:\.\d+)*"
-    r"(?:a\d+|b\d+|rc\d+)?"
-    r"(?:\.post\d+)?"
-    r"(?:\.dev\d+)?\s*$",
-    re.IGNORECASE,
+
+# Debian version format (Policy §5.6.12): [epoch:]upstream[-debian]
+# epoch: digits+
+# upstream: starts with digit; allowed chars [A-Za-z0-9.+:~] (no '-')
+# debian: allowed chars [A-Za-z0-9+.~] (no '-')
+_DEB_VER_RE = re.compile(
+    r"^\s*(?:\d+:)?[0-9][A-Za-z0-9.+:~]*(?:-[A-Za-z0-9+.~]+)?\s*$"
 )
+
 _ALLOWED_IMAGE_EXT = {".png", ".jpg", ".jpeg", ".svg", ".pdf"}
 
 def validate_package_name(name: str) -> str:
@@ -36,7 +37,7 @@ def validate_repo(repo: str, mode: str) -> str:
     if mode == "url":
         pr = urlparse(repo)
         if pr.scheme not in {"http", "https"} or not pr.netloc:
-            raise ConfigError("repo", "for 'url' mode, expected an address like https://host/...")
+            raise ConfigError("repo", "for 'url' mode, expected an address like https://host/... (Packages* or directory)")
     elif mode == "path":
         if not os.path.exists(repo):
             raise ConfigError("repo", f"path not found: {repo}")
@@ -46,11 +47,15 @@ def validate_repo(repo: str, mode: str) -> str:
             raise ConfigError("repo", f"no read permission for: {repo}")
     return repo
 
-def validate_version(version: str | None) -> str | None:
+def validate_debian_version(version: str | None) -> str | None:
+    """Accept Debian/Ubuntu version strings like '7.81.0-1ubuntu1.15', '1:2.0~rc1-0ubuntu1'."""
     if version is None or version == "":
         return None
-    if not _VER_RE.match(version):
-        raise ConfigError("version", f"version '{version}' does not look like PEP 440 (e.g., 1.2.3, 2.0rc1, 1.0.post1)")
+    if not _DEB_VER_RE.match(version):
+        raise ConfigError(
+            "version",
+            "version does not look like a Debian/Ubuntu version, e.g., '7.81.0-1ubuntu1.15', '1:2.0~rc1-0ubuntu1'",
+        )
     return version.strip()
 
 def validate_output_filename(filename: str) -> str:

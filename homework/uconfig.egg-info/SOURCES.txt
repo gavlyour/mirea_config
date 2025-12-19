@@ -1,0 +1,13 @@
+pyproject.toml
+tests/test_language.py
+uconfig/__init__.py
+uconfig/__main__.py
+uconfig/cli.py
+uconfig/errors.py
+uconfig/evaluator.py
+uconfig/lexer.py
+uconfig/parser.py
+uconfig.egg-info/PKG-INFO
+uconfig.egg-info/SOURCES.txt
+uconfig.egg-info/dependency_links.txt
+uconfig.egg-info/top_level.txt
