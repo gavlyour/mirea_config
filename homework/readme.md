@@ -12,9 +12,14 @@ CLI-инструмент на Python: читает конфигурацию из
 python -m pip install -e .
 ```
 
-## Запуск
+## Запуск (GIT Bash)
 ```bash
 python -m uconfig -o out.json < examples/web_server.ucfg
+```
+
+## Запуск (Powershell)
+```bash
+gc -Raw .\examples\web_server.ucfg | python -m uconfig -o out.json
 ```
 
 ## Тесты

@@ -1,0 +1,18 @@
+{
+  "service": "gateway",
+  "listen": 8080,
+  "limits": {
+    "read_timeout_sec": 30,
+    "max_body_mb": 25
+  },
+  "routes": [
+    {
+      "path": "/api",
+      "upstream": "http://api:8080"
+    },
+    {
+      "path": "/static",
+      "upstream": "http://cdn:8080"
+    }
+  ]
+}
